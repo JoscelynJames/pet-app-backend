@@ -1,78 +1,61 @@
 package main
 
-import (
-	"strconv"
-	"github.com/gin-gonic/gin"
-	"github.com/jinzhu/gorm"
-	// "github.com/jinzhu/gorm/dialects/postgres"
+import (  
+  "database/sql"
+	"fmt"
+	"net/http"
+	"github.com/gorilla/mux"
+  _ "github.com/lib/pq"
 )
 
-type Active_Users struct {
-	Id 				int 	 `gorm:"AUTO_INCREMENT" form:"id" json:"id`
-	FirstName string `gorm:"not null" form:"first_name" json:"first_name"`
-	Lastname 	string `gorm:"not null" form:"last_name" json:"last_name"`
+const (  
+  host     = "localhost"
+  port     = 5432
+  user     = "joscelynjames"
+  dbname   = "wheres_my_pet_db"
+)
+
+func main() {  
+	getSession()
+
+	r:= mux.NewRouter()
+
+	r.Handle("/", r)
+	r.HandleFunc("/users", getUsers).Methods("GET")
+
+	http.ListenAndServe(":8080", r)
 }
 
-func main() {
-	r := gin.Default()
+func getSession() {
+	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s "+
+    "dbname=%s sslmode=disable",
+    host, port, user, dbname)
+  db, err := sql.Open("postgres", psqlInfo)
+  if err != nil {
+    panic(err)
+  }
+  defer db.Close()
 
-	v1 := r.Group("api/v1")
-	{
-		v1.POST("/users", PostUser)
-		v1.GET("/users", GetUsers)
-		v1.GET("/users/:id", GetUser)
-		v1.PUT("/users/:id", UpdateUser)
-		v1.DELETE("/users/:id", DeleteUser)
-	}
+  err = db.Ping()
+  if err != nil {
+    panic(err)
+  }
 
-	r.Run(":8080")
+  fmt.Println("Successfully connected!")
 }
 
-func InitDb() *gorm.DB {
-	db, err := gorm.Open("postgres", "host=localhost user=joscelynjames dbname=wheres_my_pet_db sslmode=disable")
-	db.LogMode(true)
+type active_user struct {
+	ID         uint 	`json:"id"`
+	Email 		 string `json:"email"`
+	First_name string `json:"first_name"`
+	Last_name  string `json:"last_name"`
+	Password 	 string `json:"password"`
+	Admin			 bool   `json:"admin"`
+}
+
+func getUsers(http.ResponseWriter, *http.Request) {
 	
-    // Error
-    if err != nil {
-        panic(err)
-    }
-    // Creating the table
-    if !db.HasTable(&Active_Users{}) {
-        db.CreateTable(&Active_Users{})
-        db.Set("gorm:table_options", "ENGINE=InnoDB").CreateTable(&Active_Users{})
-    }
-
-    return db
 }
 
-func PostUser(c *gin.Context) {
-	db := InitDb()
-	defer db.Close()
 
-	var user Active_Users
-	c.Bind(&user)
-
-
-}
-
-func GetUsers(c *gin.Context) {
-	var users = []Active_Users{
-		Active_Users{Id: 1, FirstName: "Jo", Lastname: "James"},
-		Active_Users{Id: 2, FirstName: "Bradford", Lastname: "Lamson_Scribner"},
-	}
-
-	c.JSON(200, users)
-}
-
-func GetUser(c *gin.Context) {
-	// code goes here
-}
-
-func UpdateUser(c *gin.Context) {
-    // code goes here
-}
-
-func DeleteUser(c *gin.Context) {
-    // code goes here
-}
 
